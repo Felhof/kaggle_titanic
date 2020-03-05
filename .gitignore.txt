@@ -1,0 +1,5 @@
+# environment
+
+/bin
+/include
+/lib
