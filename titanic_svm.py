@@ -1,12 +1,15 @@
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.model_selection import cross_val_score, cross_val_predict, KFold, train_test_split
 from sklearn.preprocessing import LabelBinarizer, MinMaxScaler
+from sklearn.svm import SVC
 
 import numpy as np
 import pandas as pd
 
-numeric = ["Pclass"],["Age"],["SibSp"],["Parch"],["Fare"]
+numeric = ["Pclass","Age","SibSp","Parch","Fare"]
 
 def preprocess(data_raw):
-    data_raw.drop(["PassengerId", "Name", "Ticket", "Cabin"], axis="columns")
+    data_raw.drop(["PassengerId", "Name", "Ticket", "Cabin"], axis="columns", inplace=True)
 
     age_mean = round(data_raw["Age"].mean(), 3)
     data_raw["Age"] = data_raw["Age"].fillna(age_mean)
@@ -16,15 +19,35 @@ def preprocess(data_raw):
 
     lb = LabelBinarizer()
 
-    data_raw["Embarked"] = data_raw["Embarked"].fillna(0)
+    data_raw["Embarked"] = data_raw["Embarked"].fillna("")
     embarked_binarized = lb.fit_transform(data_raw["Embarked"])
-    data_raw.drop("Embarked")
-    data_raw = data_raw.join(embarked_binarized)
+    data_raw.drop("Embarked", axis="columns", inplace=True)
+    data_raw = data_raw.join(pd.DataFrame(embarked_binarized))
 
     data_raw["Sex"] = lb.fit_transform(data_raw["Sex"])
 
+    return data_raw
 
-if __name__ == "main":
+
+if __name__ == "__main__":
 
     train_df=pd.read_csv("train.csv")
     test_df=pd.read_csv("test.csv")
+
+    train_df = preprocess(train_df)
+
+    features = train_df.drop("Survived", axis="columns")
+    target = train_df["Survived"]
+
+    X_train, X_test, y_train, y_test = train_test_split(features, target)
+
+    model = SVC()
+    model.fit(X_train, y_train)
+    prediction_svm=model.predict(X_test)
+    print('--------------The Accuracy of the model----------------------------')
+    print('The accuracy of the Support Vector Machines Classifier is',round(accuracy_score(prediction_svm,y_test)*100,2))
+    kfold = KFold(n_splits=10, random_state=22) # k=10, split the data into 10 equal parts
+    result_svm=cross_val_score(model,features,target,cv=10,scoring='accuracy')
+    print('The cross validated score for Support Vector Machines Classifier is:',round(result_svm.mean()*100,2))
+    y_pred = cross_val_predict(model,features,target,cv=10)
+    print(confusion_matrix(features,y_pred))
