@@ -1,4 +1,4 @@
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import cross_val_score, cross_val_predict, KFold, train_test_split
 from sklearn.preprocessing import LabelBinarizer, MinMaxScaler
 from sklearn.svm import SVC
@@ -43,11 +43,15 @@ if __name__ == "__main__":
 
     model = SVC()
     model.fit(X_train, y_train)
-    prediction_svm=model.predict(X_test)
-    print('--------------The Accuracy of the model----------------------------')
-    print('The accuracy of the Support Vector Machines Classifier is',round(accuracy_score(prediction_svm,y_test)*100,2))
-    kfold = KFold(n_splits=10, random_state=22) # k=10, split the data into 10 equal parts
-    result_svm=cross_val_score(model,features,target,cv=10,scoring='accuracy')
-    print('The cross validated score for Support Vector Machines Classifier is:',round(result_svm.mean()*100,2))
+
+    kfold = KFold(n_splits=10) # k=10, split the data into 10 equal parts
     y_pred = cross_val_predict(model,features,target,cv=10)
-    print(confusion_matrix(features,y_pred))
+    confusion = confusion_matrix(target,y_pred)
+    cunfusion_df = pd.DataFrame({" " : ["Died","Survived"], "Died" : confusion[:,0], "Survived" : confusion[:,1]})
+    print("-------------Model Evaluation-------------------")
+    print()
+    print("Confusion matrix:")
+    print()
+    print(cunfusion_df.to_string(index=False))
+    print()
+    print(classification_report(target, y_pred, target_names=["Died", "Survived"]))
