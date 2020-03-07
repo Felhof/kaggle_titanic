@@ -26,15 +26,24 @@ def upsample(data, feature, minority=1):
 def preprocess(data_raw):
     data_raw.drop(["PassengerId", "Name", "Ticket", "Cabin"], axis="columns", inplace=True)
 
-    age_mean = round(data_raw["Age"].mean(), 3)
-    data_raw["Age"] = data_raw["Age"].fillna(age_mean)
+    filled_data = pd.DataFrame()
+    columns_to_drop = []
+    for column_name, column_data in data_raw.iteritems():
+        if column_data.isnull().sum() > 0:
+            if column_name in numeric:
+                data_mean = round(column_data.mean(), 3)
+                filled_data[column_name] = column_data.fillna(data_mean)
+            else:
+                filled_data[column_name] = column_data.fillna("")
+            columns_to_drop.append(column_name)
+    data_raw.drop(columns_to_drop, axis="columns", inplace=True)
+    data_raw = data_raw.join(filled_data)
 
     scaler = MinMaxScaler()
     data_raw[numeric] = scaler.fit_transform(data_raw[numeric])
 
     lb = LabelBinarizer()
 
-    data_raw["Embarked"] = data_raw["Embarked"].fillna("")
     embarked_binarized = lb.fit_transform(data_raw["Embarked"])
     data_raw.drop("Embarked", axis="columns", inplace=True)
     data_raw = data_raw.join(pd.DataFrame(embarked_binarized))
@@ -69,20 +78,33 @@ def evaluate(model, features, target):
     print(confusion_df.to_string(index=False))
     print()
     print(classification_report(target, y_pred, target_names=["Died", "Survived"]))
+    print()
 
+
+def create_submission(model, test_df_raw, passenger_ids):
+    test_pred = model.predict(test_df)
+    submission = pd.DataFrame({"PassengerId" : passenger_ids, "Survived": test_pred})
+    submission.to_csv("submission.csv", index=False)
+    print("Created and saved submission.csv")
 
 if __name__ == "__main__":
 
     train_df=pd.read_csv("train.csv")
     test_df=pd.read_csv("test.csv")
+    test_ids = test_df["PassengerId"]
 
     train_df = upsample(train_df, "Survived")
-    train_df = preprocess(train_df)
+    data_raw = pd.concat([train_df, test_df], ignore_index=True, sort=False)
+    data_processed = preprocess(data_raw)
+    train_df, test_df = np.split(data_processed, [len(train_df)])
+    test_df.drop("Survived", axis="columns", inplace=True)
 
     features = train_df.drop("Survived", axis="columns")
     target = train_df["Survived"]
 
     X_train, X_test, y_train, y_test = train_test_split(features, target)
+    y_train = y_train.astype(int)
+    y_test = y_test.astype(int)
 
     if "hps" in sys.argv[1:]:
         best_params = hyperparmeter_search(X_train, y_train)
@@ -96,3 +118,5 @@ if __name__ == "__main__":
     best_svc.fit(X_train, y_train)
 
     evaluate(best_svc, X_test, y_test)
+
+    create_submission(best_svc, test_df, test_ids)
