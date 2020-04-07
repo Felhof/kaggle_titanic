@@ -19,7 +19,6 @@ import numpy as np
 import pandas as pd
 import sys
 
-numeric = ["Pclass","Age","SibSp","Parch","Fare"]
 
 """use trained model to create prediction from test data and save result to csv.
 
@@ -91,6 +90,11 @@ def hyperparmeter_search(X_train, y_train):
         DataFrame: the processed data
 """
 def preprocess(data_raw):
+
+    #columns that have numeric values
+    numeric = ["Pclass","Age","SibSp","Parch","Fare"]
+
+    #columns that are not relevant for the model
     data_raw.drop(["PassengerId", "Name", "Ticket", "Cabin"], axis="columns", inplace=True)
 
     filled_data = pd.DataFrame()
